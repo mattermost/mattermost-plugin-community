@@ -1,0 +1,16 @@
+[prune]
+  non-go = true
+  go-tests = true
+  unused-packages = true
+
+[[constraint]]
+  name = "github.com/mattermost/mattermost-server"
+  branch = "bots"
+
+[[constraint]]
+  name = "github.com/pkg/errors"
+  version = "~0.8.0"
+
+[[constraint]]
+  name= "github.com/google/go-github"
+  version = "~21.0.0"

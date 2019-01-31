@@ -1,0 +1,22 @@
+{
+    "id": "com.mattermost.community",
+    "name": "Community",
+    "description": "This plugin allows listing of GitHub contributors.",
+    "version": "0.1.0",
+    "server": {
+        "executables": {
+            "linux-amd64": "server/dist/plugin-linux-amd64",
+            "darwin-amd64": "server/dist/plugin-darwin-amd64",
+            "windows-amd64": "server/dist/plugin-windows-amd64.exe"
+        }
+    },
+    "settings_schema": {
+        "footer": "* To report an issue, make a suggestion or a contribution, [check the repository](https://github.com/mattermost/mattermost-plugin-community).",
+        "settings": [{
+            "key": "Token",
+            "display_name": "GitHub personal access token",
+            "type": "text",
+            "help_text": "Please enter your GitHub Personal access token here. You can create it under https://github.com/settings/tokens."
+       }]
+    }
+}
