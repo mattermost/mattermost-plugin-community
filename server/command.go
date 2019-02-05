@@ -73,7 +73,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 	headline := " between " + since.Format(shortForm) + " and " + until.Format(shortForm)
 
 	attachments := []*model.SlackAttachment{{
-		Title:      "Fetching contributors stats" + headline,
+		Title:      "Fetching contributor stats" + headline,
 		Text:       "Please wait a few minutes.",
 		AuthorName: topic,
 		AuthorIcon: org.GetAvatarURL(),
@@ -120,7 +120,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 			}
 
 			attachment := post.Props["attachments"].([]*model.SlackAttachment)[0]
-			attachment.Title = "Contributors stats" + headline
+			attachment.Title = "Contributor stats" + headline
 			attachment.Text = ""
 			attachment.Fields = []*model.SlackAttachmentField{{
 				Title: "Number of commits",
