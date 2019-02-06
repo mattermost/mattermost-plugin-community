@@ -3,6 +3,7 @@
     "name": "Community",
     "description": "This plugin lists GitHub contributors.",
     "version": "0.1.0",
+    "min_server_version": "5.8.0",
     "server": {
         "executables": {
             "linux-amd64": "server/dist/plugin-linux-amd64",
