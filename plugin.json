@@ -1,7 +1,7 @@
 {
     "id": "com.mattermost.community",
     "name": "Community",
-    "description": "This plugin allows listing of GitHub contributors.",
+    "description": "This plugin lists GitHub contributors.",
     "version": "0.1.0",
     "server": {
         "executables": {
@@ -16,7 +16,7 @@
             "key": "Token",
             "display_name": "GitHub personal access token",
             "type": "text",
-            "help_text": "Please enter your GitHub Personal access token here. You can create it under https://github.com/settings/tokens."
+            "help_text": "Please enter your GitHub personal access token here. You can create it under https://github.com/settings/tokens."
        }]
     }
 }
