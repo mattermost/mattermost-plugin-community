@@ -73,6 +73,9 @@ func (p *Plugin) runfetchContributorsDataFromRepoJob(wg *sync.WaitGroup, result 
 func (p *Plugin) fetchContributorsDataFromRepo(org, repo string, since, until time.Time) (sort.StringSlice, uint64, error) {
 	var contributors sort.StringSlice
 	var numberOfCommits uint64
+
+	// Fetch commits until one day after at midnight
+	until = until.AddDate(0, 0, 1)
 	opt := &github.CommitsListOptions{
 		ListOptions: github.ListOptions{
 			PerPage: resultsPerPage,
