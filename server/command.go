@@ -16,11 +16,7 @@ import (
 
 // ExecuteCommand fetches contribution stats for a given repository or organistation and posts them in a message
 func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
-	channelID := args.ChannelId
-	userID := args.UserId
-	command := args.Command
-
-	command = strings.TrimPrefix(command, "/"+trigger)
+	command := strings.TrimPrefix(args.Command, "/"+trigger)
 	command = strings.TrimSpace(command)
 	commandArgs := strings.Split(command, " ")
 
@@ -70,10 +66,9 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 		topic += "/" + repo
 	}
 
-	headline := " between " + since.Format(shortForm) + " and " + until.Format(shortForm)
-
 	attachments := []*model.SlackAttachment{{
-		Title:      "Fetching contributor stats" + headline,
+
+		Title:      "Fetching contributor stats between " + since.Format(shortForm) + " and " + until.Format(shortForm),
 		Text:       "Please wait a few minutes.",
 		AuthorName: topic,
 		AuthorIcon: org.GetAvatarURL(),
@@ -81,7 +76,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 	}}
 
 	post := &model.Post{
-		ChannelId: channelID,
+		ChannelId: args.ChannelId,
 		UserId:    p.botUserID,
 	}
 	model.ParseSlackAttachment(post, attachments)
@@ -91,56 +86,59 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 		return nil, appErr
 	}
 
-	go func() {
-		var contributors sort.StringSlice
-		var numberOfCommits uint64
-		if repo != "" {
-			contributors, numberOfCommits, err = p.fetchContributorsDataFromRepo(orgName, repo, since, until)
-		} else {
-			contributors, numberOfCommits, err = p.fetchContributorsDataFromOrg(orgName, since, until)
-		}
-		if err != nil {
-			p.API.LogError("failed to fetch data", "err", err.Error())
-
-			var message string
-			if _, ok := err.(*github.RateLimitError); ok {
-				message = "Hit rate limit. Please try again later."
-			} else {
-				message = "Failed to fetch data:" + err.Error()
-			}
-			post.Props["attachments"].([]*model.SlackAttachment)[0].Text = message
-		} else {
-			contributors.Sort()
-			var contributorsText string
-			for i, c := range contributors {
-				contributorsText += fmt.Sprintf("[%[1]s](https://github.com/%[1]v)", c)
-				if i+1 != len(contributors) {
-					contributorsText += ", "
-				}
-			}
-
-			attachment := post.Props["attachments"].([]*model.SlackAttachment)[0]
-			attachment.Title = "Contributor stats" + headline
-			attachment.Text = ""
-			attachment.Fields = []*model.SlackAttachmentField{{
-				Title: "Number of commits",
-				Value: strconv.FormatUint(numberOfCommits, 10),
-			}, {
-				Title: "Number of Contributors",
-				Value: strconv.Itoa(len(contributors)),
-			}, {
-				Title: "Contributors",
-				Value: "```\n" + contributorsText + "\n```",
-			}}
-		}
-		if _, appErr := p.API.UpdatePost(post); appErr != nil {
-			p.SendEphemeralPost(channelID, userID, "Something went bad. Please try again.")
-			p.API.LogError("failed to update post", "err", appErr.Error())
-			return
-		}
-	}()
-
+	go p.updatePostWithContributorsData(post, args.UserId, orgName, repo, since, until)
 	return &model.CommandResponse{}, nil
+}
+
+func (p *Plugin) updatePostWithContributorsData(post *model.Post, userID, org, repo string, since, until time.Time) {
+	var contributors sort.StringSlice
+	var numberOfCommits uint64
+	var err error
+	if repo != "" {
+		contributors, numberOfCommits, err = p.fetchContributorsDataFromRepo(org, repo, since, until)
+	} else {
+		contributors, numberOfCommits, err = p.fetchContributorsDataFromOrg(org, since, until)
+	}
+	if err != nil {
+		p.API.LogError("failed to fetch data", "err", err.Error())
+
+		var message string
+		if _, ok := err.(*github.RateLimitError); ok {
+			message = "Hit rate limit. Please try again later."
+		} else {
+			message = "Failed to fetch data:" + err.Error()
+		}
+		post.Props["attachments"].([]*model.SlackAttachment)[0].Text = message
+	} else {
+		contributors.Sort()
+		var contributorsText string
+		for i, c := range contributors {
+			contributorsText += fmt.Sprintf("[%[1]s](https://github.com/%[1]v)", c)
+			if i+1 != len(contributors) {
+				contributorsText += ", "
+			}
+		}
+
+		attachment := post.Props["attachments"].([]*model.SlackAttachment)[0]
+		attachment.Title = "Contributor stats between " + since.Format(shortForm) + " and " + until.Format(shortForm)
+		attachment.Text = ""
+		attachment.Fields = []*model.SlackAttachmentField{{
+			Title: "Number of commits",
+			Value: strconv.FormatUint(numberOfCommits, 10),
+		}, {
+			Title: "Number of Contributors",
+			Value: strconv.Itoa(len(contributors)),
+		}, {
+			Title: "Contributors",
+			Value: "```\n" + contributorsText + "\n```",
+		}}
+	}
+
+	if _, appErr := p.API.UpdatePost(post); appErr != nil {
+		p.SendEphemeralPost(post.ChannelId, userID, "Something went bad. Please try again.")
+		p.API.LogError("failed to update post", "err", appErr.Error())
+		return
+	}
 }
 
 // getCommand return the /contributors slash command
