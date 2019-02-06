@@ -5,17 +5,26 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/google/go-github/github"
 )
 
-func (p *Plugin) fetchAllRepos(org string, since, until time.Time) (sort.StringSlice, uint64, error) {
+type contributorsDataResult struct {
+	contributors    sort.StringSlice
+	numberOfCommits uint64
+	err             error
+}
+
+const resultsPerPage = 100
+
+func (p *Plugin) fetchContributorsDataFromOrg(org string, since, until time.Time) (sort.StringSlice, uint64, error) {
 	var contributors sort.StringSlice
 	var numberOfCommits uint64
 	opt := &github.RepositoryListByOrgOptions{
 		ListOptions: github.ListOptions{
-			PerPage: 10,
+			PerPage: resultsPerPage,
 		},
 		Type: "sources",
 	}
@@ -26,14 +35,24 @@ func (p *Plugin) fetchAllRepos(org string, since, until time.Time) (sort.StringS
 			return nil, 0, err
 		}
 
+		var wg sync.WaitGroup
+		var results = make(chan contributorsDataResult, len(repos))
+
 		for _, repo := range repos {
-			rName := *repo.Name
-			repoContributors, n, err := p.fetchRepo(org, rName, since, until)
-			if err != nil {
+			wg.Add(1)
+			go p.runfetchContributorsDataFromRepoJob(&wg, results, org, *repo.Name, since, until)
+		}
+		go func() {
+			wg.Wait()
+			close(results)
+		}()
+
+		for result := range results {
+			if result.err != nil {
 				return nil, 0, err
 			}
-			numberOfCommits += n
-			contributors = union(contributors, repoContributors)
+			numberOfCommits += result.numberOfCommits
+			contributors = union(contributors, result.contributors)
 		}
 
 		if resp.NextPage == 0 {
@@ -44,12 +63,19 @@ func (p *Plugin) fetchAllRepos(org string, since, until time.Time) (sort.StringS
 	return contributors, numberOfCommits, nil
 }
 
-func (p *Plugin) fetchRepo(org, repo string, since, until time.Time) (sort.StringSlice, uint64, error) {
+func (p *Plugin) runfetchContributorsDataFromRepoJob(wg *sync.WaitGroup, result chan<- contributorsDataResult, org, repo string, since, until time.Time) {
+	c, n, err := p.fetchContributorsDataFromRepo(org, repo, since, until)
+	output := contributorsDataResult{c, n, err}
+	result <- output
+	wg.Done()
+}
+
+func (p *Plugin) fetchContributorsDataFromRepo(org, repo string, since, until time.Time) (sort.StringSlice, uint64, error) {
 	var contributors sort.StringSlice
 	var numberOfCommits uint64
 	opt := &github.CommitsListOptions{
 		ListOptions: github.ListOptions{
-			PerPage: 100,
+			PerPage: resultsPerPage,
 		},
 		Since: since,
 		Until: until,
@@ -58,7 +84,7 @@ func (p *Plugin) fetchRepo(org, repo string, since, until time.Time) (sort.Strin
 	for {
 		commits, resp, err := p.client.Repositories.ListCommits(context.Background(), org, repo, opt)
 		if resp.StatusCode == http.StatusNotFound {
-			return nil, 0, fmt.Errorf("Repository %v/%v not found", org, repo)
+			return nil, 0, fmt.Errorf("repository %v/%v not found", org, repo)
 		}
 		if err != nil {
 			return nil, 0, err

@@ -95,19 +95,19 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 		var contributors sort.StringSlice
 		var numberOfCommits uint64
 		if repo != "" {
-			contributors, numberOfCommits, err = p.fetchRepo(orgName, repo, since, until)
+			contributors, numberOfCommits, err = p.fetchContributorsDataFromRepo(orgName, repo, since, until)
 		} else {
-			contributors, numberOfCommits, err = p.fetchAllRepos(orgName, since, until)
+			contributors, numberOfCommits, err = p.fetchContributorsDataFromOrg(orgName, since, until)
 		}
 		if err != nil {
+			p.API.LogError("failed to fetch data", "err", err.Error())
+
 			var message string
 			if _, ok := err.(*github.RateLimitError); ok {
 				message = "Hit rate limit. Please try again later."
 			} else {
 				message = "Failed to fetch data:" + err.Error()
 			}
-
-			p.API.LogError("failed to fetch data", "err", err.Error())
 			post.Props["attachments"].([]*model.SlackAttachment)[0].Text = message
 		} else {
 			contributors.Sort()
@@ -135,7 +135,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 		}
 		if _, appErr := p.API.UpdatePost(post); appErr != nil {
 			p.SendEphemeralPost(channelID, userID, "Something went bad. Please try again.")
-			p.API.LogError("failed to update post", "err", err.Error())
+			p.API.LogError("failed to update post", "err", appErr.Error())
 			return
 		}
 	}()
