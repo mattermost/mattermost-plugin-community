@@ -1,4 +1,4 @@
-# Community Plugin [![Build Status](https://travis-ci.org/mattermost/mattermost-plugin-community.svg?branch=master)](https://travis-ci.org/mattermost/mattermost-plugin-community)
+# Community Plugin [![CircleCI](https://circleci.com/gh/mattermost/mattermost-plugin-community.svg?style=svg)](https://circleci.com/gh/mattermost/mattermost-plugin-community)
 
 This plugin allows users to fetch contributor data from GitHub via a slash command.
 
