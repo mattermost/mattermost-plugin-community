@@ -1,0 +1,53 @@
+{
+    "id": "com.mattermost.community",
+    "name": "Community",
+    "description": "This plugin lists GitHub contributors.",
+    "version": "0.1.0",
+    "min_server_version": "5.12.0",
+    "server": {
+        "executables": {
+            "linux-amd64": "server/dist/plugin-linux-amd64",
+            "darwin-amd64": "server/dist/plugin-darwin-amd64",
+            "windows-amd64": "server/dist/plugin-windows-amd64.exe"
+        }
+    },
+    "settings_schema": {
+        "footer": "* To report an issue, make a suggestion or a contribution, [check the repository](https://github.com/mattermost/mattermost-plugin-community).",
+        "settings": [{
+            "key": "Token",
+            "display_name": "GitHub personal access token",
+            "type": "text",
+            "help_text": "Please enter your GitHub personal access token here. You can create it under https://github.com/settings/tokens."
+       }, {
+            "key": "HackfestStart",
+            "display_name": "Start of Hackfest",
+            "type": "text",
+            "help_text": "Start date of Hackfest"
+       }, {
+            "key": "HackfestEnd",
+            "display_name": "End of Hackfest",
+            "type": "text",
+            "help_text": "End date of Hackfest"
+        }, {
+           "key": "HackfestOrg",
+           "display_name": "Hackfest organisation",
+           "type": "text",
+           "help_text": "Name of the GitHub organisation for the Hackfest."
+        }, {
+           "key": "HackfestRepo",
+           "display_name": "Hackfest repository",
+           "type": "text",
+           "help_text": "Name of the GitHub repository for the Hackfest. Leave empty to include every repository in the organisation."
+        }, {
+            "key": "HackfestExcludeTeams",
+            "display_name": "Exclude Teams from Hackfest",
+            "type": "text",
+            "help_text": "List of teams to exclude from the Hackfest seperates by comma."
+        }, {
+            "key": "HackfestExcludeUsers",
+            "display_name": "Exclude Users from Hackfest",
+            "type": "text",
+            "help_text": "List of users to exclude from the Hackfest seperates by comma."
+        }]
+    }
+}
