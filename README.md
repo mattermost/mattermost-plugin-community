@@ -1,3 +1,4 @@
+
 # Community Plugin ![CircleCI branch](https://img.shields.io/circleci/project/github/mattermost/mattermost-plugin-community/master.svg)
 
 This plugin allows users to fetch contributor data from GitHub via a slash command.
