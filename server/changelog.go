@@ -43,7 +43,7 @@ func (p *Plugin) executeChangelogCommand(commandArgs []string, args *model.Comma
 
 	org, _, err := p.client.Organizations.Get(context.Background(), owner)
 	if err != nil {
-		p.API.LogWarn("failed to fetch organisation", "error", err.Error())
+		p.API.LogWarn("Failed to fetch organization", "error", err.Error())
 		return &model.AppError{
 			Id:         "Failed to fetch data",
 			StatusCode: http.StatusBadRequest,
@@ -92,7 +92,7 @@ func (p *Plugin) updateChangelogPost(post *model.Post, userID, org, repo string,
 		commits, err = p.fetchCommitsFromOrg(org, month, nextMonth)
 	}
 	if err != nil {
-		p.API.LogError("failed to fetch data", "err", err.Error())
+		p.API.LogError("Failed to fetch data", "err", err.Error())
 
 		var message string
 		if _, ok := err.(*github.RateLimitError); ok {
@@ -115,12 +115,14 @@ func (p *Plugin) updateChangelogPost(post *model.Post, userID, org, repo string,
 		}
 		util.SortSlice(commiter)
 
-		var commiterText string
+		const userPerPost = 150
+		commiterTexts := make([]string, len(commiter)/userPerPost+1)
 		for i, c := range commiter {
-			commiterText += fmt.Sprintf("[%[1]s](https://github.com/%[1]v)", c)
+			profile := fmt.Sprintf("[%[1]s](https://github.com/%[1]v)", c)
 			if i+1 != len(commiter) {
-				commiterText += ", "
+				profile += ", "
 			}
+			commiterTexts[i/150] += profile
 		}
 
 		attachment := post.Props["attachments"].([]*model.SlackAttachment)[0]
@@ -131,13 +133,33 @@ func (p *Plugin) updateChangelogPost(post *model.Post, userID, org, repo string,
 			Value: strconv.Itoa(len(commiter)),
 		}, {
 			Title: "Commiter",
-			Value: "```\n" + commiterText + "\n```",
+			Value: "```\n" + commiterTexts[0] + "\n```",
 		}}
+
+		for i := 1; i < len(commiterTexts); i++ {
+			attachment := *attachment
+			attachment.Title += fmt.Sprintf(" (Part %v)", i+1)
+			attachment.Fields = []*model.SlackAttachmentField{{
+				Title: "Commiter",
+				Value: "```\n" + commiterTexts[i] + "\n```",
+			}}
+
+			additionalPost := &model.Post{
+				ChannelId: post.ChannelId,
+				UserId:    post.UserId,
+			}
+			model.ParseSlackAttachment(additionalPost, []*model.SlackAttachment{&attachment})
+
+			_, appErr := p.API.CreatePost(additionalPost)
+			if appErr != nil {
+				p.API.LogError("Failed to create additional changelog post", "err", appErr.Error())
+			}
+		}
 	}
 
 	if _, appErr := p.API.UpdatePost(post); appErr != nil {
 		p.SendEphemeralPost(post.ChannelId, userID, "Something went bad. Please try again.")
-		p.API.LogError("failed to update post", "err", appErr.Error())
+		p.API.LogError("Failed to update post", "err", appErr.Error())
 		return
 	}
 }
