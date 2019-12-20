@@ -10,7 +10,7 @@ import (
 
 	"github.com/google/go-github/v25/github"
 	"github.com/mattermost/mattermost-plugin-community/server/util"
-	"github.com/mattermost/mattermost-server/model"
+	"github.com/mattermost/mattermost-server/v5/model"
 )
 
 const shortFormWithDay = "2006-01-02"

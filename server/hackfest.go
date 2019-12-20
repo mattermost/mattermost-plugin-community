@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/google/go-github/v25/github"
-	"github.com/mattermost/mattermost-server/model"
+	"github.com/mattermost/mattermost-server/v5/model"
 )
 
 func (p *Plugin) executeHackfestCommand(commandArgs []string, args *model.CommandArgs) *model.AppError {
