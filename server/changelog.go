@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/go-github/v25/github"
 	"github.com/mattermost/mattermost-plugin-community/server/util"
-	"github.com/mattermost/mattermost-server/model"
+	"github.com/mattermost/mattermost-server/v5/model"
 )
 
 const shortForm = "2006-01"
