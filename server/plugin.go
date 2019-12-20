@@ -57,7 +57,7 @@ func (p *Plugin) OnActivate() error {
 
 // SendEphemeralPost sends a ephemeral message in a given channel to a given user
 func (p *Plugin) SendEphemeralPost(channelID, userID, message string) {
-	// This is mostly taken from https://github.com/mattermost/mattermost-server/v5/blob/master/app/command.go#L304
+	// This is mostly taken from https://github.com/mattermost/mattermost-server/blob/master/app/command.go#L304
 	ephemeralPost := &model.Post{}
 	ephemeralPost.ChannelId = channelID
 	ephemeralPost.UserId = p.botUserID
