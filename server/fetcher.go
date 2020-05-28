@@ -46,9 +46,10 @@ func (p *Plugin) fetchCommitsFromOrg(org string, since, until time.Time) ([]*git
 
 		for jr := range jobResults {
 			if jr.err != nil {
-				return nil, err
+				p.API.LogWarn("Failed to fetch commits ", "error", jr.err.Error())
+			} else {
+				result = append(result, jr.commits...)
 			}
-			result = append(result, jr.commits...)
 		}
 
 		if resp.NextPage == 0 {
@@ -56,6 +57,7 @@ func (p *Plugin) fetchCommitsFromOrg(org string, since, until time.Time) ([]*git
 		}
 		opts.Page = resp.NextPage
 	}
+
 	return result, nil
 }
 
