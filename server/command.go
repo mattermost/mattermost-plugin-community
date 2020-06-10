@@ -29,8 +29,8 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 		appErr = p.executeChangelogCommand(commandArgs, args)
 	case "hackfest":
 		appErr = p.executeHackfestCommand(commandArgs, args)
-	case "new-commiter":
-		appErr = p.executeNewCommiterCommand(commandArgs, args)
+	case "new-committer":
+		appErr = p.executeNewCommitterCommand(commandArgs, args)
 	default:
 		return nil, &model.AppError{
 			Id:         fmt.Sprintf("Unkown command %v", command),
@@ -53,7 +53,7 @@ func getCommand() *model.Command {
 		DisplayName:      "Community",
 		Description:      "Do community stuff",
 		AutoComplete:     true,
-		AutoCompleteDesc: "Available commands: commiter, changelog, hackfest",
+		AutoCompleteDesc: "Available commands: commiter, changelog, hackfest, new-committer",
 		AutoCompleteHint: "[command]",
 	}
 }

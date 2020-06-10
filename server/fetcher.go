@@ -15,14 +15,10 @@ type commitsResult struct {
 	err     error
 }
 
-type repoContributors struct {
+type contributorsResult struct {
 	contributorStats []*github.ContributorStats
 	repo             string
-}
-
-type contributorsResult struct {
-	contributors *repoContributors
-	err          error
+	err              error
 }
 
 const resultsPerPage = 100
@@ -104,8 +100,8 @@ func (p *Plugin) fetchCommitsFromRepo(org, repo string, since, until time.Time) 
 	return result, nil
 }
 
-func (p *Plugin) fetchContributorsFromOrg(org string) ([]*repoContributors, error) {
-	var result []*repoContributors
+func (p *Plugin) fetchContributors(org string) (map[string][]*github.ContributorStats, error) {
+	var result = map[string][]*github.ContributorStats{}
 	opts := &github.RepositoryListByOrgOptions{
 		ListOptions: github.ListOptions{
 			PerPage: resultsPerPage,
@@ -133,7 +129,7 @@ func (p *Plugin) fetchContributorsFromOrg(org string) ([]*repoContributors, erro
 
 		for jr := range jobResults {
 			if jr.err == nil {
-				result = append(result, jr.contributors)
+				result[jr.repo] = jr.contributorStats
 			}
 		}
 
@@ -147,7 +143,7 @@ func (p *Plugin) fetchContributorsFromOrg(org string) ([]*repoContributors, erro
 
 func (p *Plugin) fetchContributorsFromRepoJob(wg *sync.WaitGroup, result chan<- contributorsResult, org, repo string) {
 	contributors, err := p.fetchContributorsFromRepo(org, repo)
-	output := contributorsResult{&repoContributors{contributors, repo}, err}
+	output := contributorsResult{contributors, repo, err}
 	result <- output
 	wg.Done()
 }
