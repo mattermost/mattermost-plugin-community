@@ -103,8 +103,27 @@ func (p *Plugin) updateNewCommittersPost(post *model.Post, userID, org string, s
 		return result[i].date.Before(result[j].date)
 	})
 
-	p.createPostContent(post, result, since)
+	p.updatePostContent(post, result, since)
 	p.updatePost(post, userID)
+	p.createContributorsPost(post.ChannelId, userID, result)
+}
+
+func (p *Plugin) createContributorsPost(channelID, userID string, result []*firstContributionInfo) {
+	var resultText string
+	for _, e := range result {
+		resultText += fmt.Sprintf("- [%[1]s](https://github.com/%[1]v): [first commit](%s) at %s on [%[4]s](https://github.com/%s/%[4]v)\n", e.author, e.commit, e.date.Format(shortFormWithDay), e.repo, e.org)
+	}
+
+	committersPost := &model.Post{
+		ChannelId: channelID,
+		UserId:    p.botUserID,
+		Message:   resultText,
+	}
+
+	if _, appErr := p.API.CreatePost(committersPost); appErr != nil {
+		p.SendEphemeralPost(committersPost.ChannelId, userID, "Something went bad. Please try again. "+appErr.Where+" "+appErr.Id)
+		p.API.LogError("failed to create post", "err", appErr.Error())
+	}
 }
 
 func (p *Plugin) logAndPropUserAboutError(post *model.Post, userID string, err error) {
@@ -118,21 +137,13 @@ func (p *Plugin) logAndPropUserAboutError(post *model.Post, userID string, err e
 	p.updatePost(post, userID)
 }
 
-func (p *Plugin) createPostContent(post *model.Post, result []*firstContributionInfo, since time.Time) {
-	var resultText string
-	for _, e := range result {
-		resultText += fmt.Sprintf("- [%[1]s](https://github.com/%[1]v): [first commit](%s) at %s on [%[4]s](https://github.com/%s/%[4]v)\n", e.author, e.commit, e.date.Format(shortFormWithDay), e.repo, e.org)
-	}
-
+func (p *Plugin) updatePostContent(post *model.Post, result []*firstContributionInfo, since time.Time) {
 	attachment := post.Props["attachments"].([]*model.SlackAttachment)[0]
 	attachment.Title = "New Committers since " + since.Format(shortFormWithDay)
 	attachment.Text = ""
 	attachment.Fields = []*model.SlackAttachmentField{{
 		Title: "Number of new committers:",
 		Value: strconv.Itoa(len(result)),
-	}, {
-		Title: "Committers:",
-		Value: resultText,
 	}}
 }
 
