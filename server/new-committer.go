@@ -81,14 +81,7 @@ func (p *Plugin) executeNewCommitterCommand(commandArgs []string, args *model.Co
 func (p *Plugin) updateNewCommittersPost(post *model.Post, userID, org string, since time.Time) {
 	contributors, err := p.fetchContributors(org)
 	if err != nil {
-		p.API.LogError("failed to fetch data", "err", err.Error())
-
-		var message = "Failed to fetch data:" + err.Error()
-		if _, ok := err.(*github.RateLimitError); ok {
-			message = "Hit rate limit. Please try again later."
-		}
-		post.Props["attachments"].([]*model.SlackAttachment)[0].Text = message
-		p.updatePost(post, userID)
+		p.logAndPropUserAboutError(post, userID, err)
 		return
 	}
 
@@ -97,8 +90,11 @@ func (p *Plugin) updateNewCommittersPost(post *model.Post, userID, org string, s
 
 	var result []*firstContributionInfo
 	for committer, contribution := range firstContributions {
-		firstCommit := p.getFirstCommit(org, contribution.repo, committer, contribution.contributionWeek)
-		if firstCommit != nil && firstCommit.GetCommit().Committer.GetDate().After(since) {
+		firstCommit, err := p.getFirstCommit(org, contribution.repo, committer, contribution.contributionWeek)
+		if err != nil {
+			p.logAndPropUserAboutError(post, userID, err)
+			return
+		} else if firstCommit != nil && firstCommit.GetCommit().Committer.GetDate().After(since) {
 			result = append(result, &firstContributionInfo{firstCommit.GetAuthor().GetLogin(), firstCommit.GetCommit().Committer.GetDate(), firstCommit.GetHTMLURL(), org, contribution.repo})
 		}
 	}
@@ -108,6 +104,17 @@ func (p *Plugin) updateNewCommittersPost(post *model.Post, userID, org string, s
 	})
 
 	p.createPostContent(post, result, since)
+	p.updatePost(post, userID)
+}
+
+func (p *Plugin) logAndPropUserAboutError(post *model.Post, userID string, err error) {
+	p.API.LogError("failed to fetch data", "err", err.Error())
+
+	var message = "Failed to fetch data:" + err.Error()
+	if _, ok := err.(*github.RateLimitError); ok {
+		message = "Hit rate limit. Please try again later."
+	}
+	post.Props["attachments"].([]*model.SlackAttachment)[0].Text = message
 	p.updatePost(post, userID)
 }
 
@@ -121,10 +128,10 @@ func (p *Plugin) createPostContent(post *model.Post, result []*firstContribution
 	attachment.Title = "New Committers since " + since.Format(shortFormWithDay)
 	attachment.Text = ""
 	attachment.Fields = []*model.SlackAttachmentField{{
-		Title: "Number of new committers",
+		Title: "Number of new committers:",
 		Value: strconv.Itoa(len(result)),
 	}, {
-		Title: "Committer",
+		Title: "Committers:",
 		Value: resultText,
 	}}
 }
@@ -136,15 +143,15 @@ func (p *Plugin) updatePost(post *model.Post, userID string) {
 	}
 }
 
-func (p *Plugin) getFirstCommit(org, repo, committer string, week time.Time) *github.RepositoryCommit {
+func (p *Plugin) getFirstCommit(org, repo, committer string, week time.Time) (*github.RepositoryCommit, error) {
 	commits, err := p.fetchCommitsFromRepoByAuthorAndWeek(org, repo, committer, week)
 	if err != nil || len(commits) == 0 {
-		return nil
+		return nil, err
 	}
 	sort.Slice(commits, func(i, j int) bool {
 		return commits[i].GetCommit().Committer.GetDate().Before(commits[j].GetCommit().Committer.GetDate())
 	})
-	return commits[0]
+	return commits[0], nil
 }
 
 func (p *Plugin) findFirstContributions(contributors map[string][]*github.ContributorStats) map[string]contributionInfo {
