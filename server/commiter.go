@@ -51,7 +51,7 @@ func (p *Plugin) executeCommiterCommand(commandArgs []string, args *model.Comman
 		}
 	}
 
-	org, _, err := p.client.Organizations.Get(context.Background(), owner)
+	isOrg, err := p.verifyOrg(owner)
 	if err != nil {
 		return &model.AppError{
 			Id:         "Failed to fetch data",
@@ -69,7 +69,7 @@ func (p *Plugin) executeCommiterCommand(commandArgs []string, args *model.Comman
 		Title:      "Fetching commiter stats between " + since.Format(shortFormWithDay) + " and " + until.Format(shortFormWithDay),
 		Text:       waitText,
 		AuthorName: topic,
-		AuthorIcon: org.GetAvatarURL(),
+		AuthorIcon: p.GetAvatarLogo(owner, isOrg),
 		AuthorLink: fmt.Sprintf("https://github.com/%v", topic),
 	}}
 
@@ -84,12 +84,12 @@ func (p *Plugin) executeCommiterCommand(commandArgs []string, args *model.Comman
 		return appErr
 	}
 
-	go p.updateCommitersPost(loadingPost, args.UserId, owner, repo, since, until)
+	go p.updateCommitersPost(loadingPost, args.UserId, owner, repo, isOrg, since, until)
 
 	return nil
 }
 
-func (p *Plugin) updateCommitersPost(post *model.Post, userID, org, repo string, since, until time.Time) {
+func (p *Plugin) updateCommitersPost(post *model.Post, userID, org, repo string, isOrg bool, since, until time.Time) {
 	// Fetch commits until one day after at midnight
 	fetchUntil := until.AddDate(0, 0, 1).Add(-time.Microsecond)
 
@@ -97,9 +97,11 @@ func (p *Plugin) updateCommitersPost(post *model.Post, userID, org, repo string,
 	var err error
 	if repo != "" {
 		commits, err = p.fetchCommitsFromRepo(org, repo, since, fetchUntil)
-	} else {
+	}
+	if isOrg {
 		commits, err = p.fetchCommitsFromOrg(org, since, fetchUntil)
 	}
+	commits, err = p.fetchCommitsFromUser(org, since, fetchUntil)
 	if err != nil {
 		p.API.LogError("failed to fetch data", "err", err.Error())
 
@@ -165,5 +167,29 @@ func (p *Plugin) updateCommitersPost(post *model.Post, userID, org, repo string,
 		p.SendEphemeralPost(post.ChannelId, userID, "Something went bad. Please try again.")
 		p.API.LogError("failed to update post", "err", appErr.Error())
 		return
+	}
+}
+
+func (p *Plugin) verifyOrg(owner string) (bool, error) {
+	_, _, err := p.client.Organizations.Get(context.Background(), owner)
+	if err == nil {
+		return true, nil
+	}
+	_, _, err = p.client.Users.Get(context.Background(), owner)
+	if err == nil {
+		return false, nil
+	} else {
+		return true, nil
+	}
+
+}
+
+func (p *Plugin) GetAvatarLogo(owner string, isOrg bool) string {
+	if isOrg {
+		org, _, _ := p.client.Organizations.Get(context.Background(), owner)
+		return org.GetAvatarURL()
+	} else {
+		user, _, _ := p.client.Users.Get(context.Background(), owner)
+		return user.GetAvatarURL()
 	}
 }
