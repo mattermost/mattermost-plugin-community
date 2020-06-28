@@ -107,8 +107,8 @@ func (p *Plugin) findFirstContributions(contributors map[string][]*github.Contri
 		for _, contributor := range repoContributors {
 			author := contributor.GetLogin()
 
-			_, contains := earlierContributors[author]
-			if contains {
+			_, contributedEarlier := earlierContributors[author]
+			if contributedEarlier {
 				continue
 			}
 
