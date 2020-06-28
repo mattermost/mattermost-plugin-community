@@ -16,7 +16,7 @@ type commitsResult struct {
 }
 
 type contributorsResult struct {
-	contributorStats []*github.ContributorStats
+	contributorStats []*github.Contributor
 	repo             string
 	err              error
 }
@@ -100,8 +100,8 @@ func (p *Plugin) fetchCommitsFromRepo(org, repo string, since, until time.Time) 
 	return result, nil
 }
 
-func (p *Plugin) fetchContributors(org string) (map[string][]*github.ContributorStats, error) {
-	var result = map[string][]*github.ContributorStats{}
+func (p *Plugin) fetchContributors(org string) (map[string][]*github.Contributor, error) {
+	var result = map[string][]*github.Contributor{}
 	opts := &github.RepositoryListByOrgOptions{
 		ListOptions: github.ListOptions{
 			PerPage: resultsPerPage,
@@ -129,7 +129,7 @@ func (p *Plugin) fetchContributors(org string) (map[string][]*github.Contributor
 
 		for jr := range jobResults {
 			if jr.err == nil {
-				result[jr.repo] = jr.contributorStats
+				result[jr.repo] = append(result[jr.repo], jr.contributorStats...)
 			}
 		}
 
@@ -148,45 +148,50 @@ func (p *Plugin) fetchContributorsFromRepoJob(wg *sync.WaitGroup, result chan<- 
 	wg.Done()
 }
 
-func (p *Plugin) fetchContributorsFromRepo(org, repo string) ([]*github.ContributorStats, error) {
-	var result []*github.ContributorStats
+func (p *Plugin) fetchContributorsFromRepo(org, repo string) ([]*github.Contributor, error) {
+	var result []*github.Contributor
+
+	opts := &github.ListContributorsOptions{
+		ListOptions: github.ListOptions{
+			PerPage: resultsPerPage,
+		},
+	}
 
 	for {
-		contributors, resp, err := p.client.Repositories.ListContributorsStats(context.Background(), org, repo)
-		if resp.StatusCode == http.StatusNotFound {
-			return nil, fmt.Errorf("repository %v/%v not found", org, repo)
-		}
+		contributors, resp, err := p.client.Repositories.ListContributors(context.Background(), org, repo, opts)
 		if err != nil {
 			return nil, err
+		}
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, fmt.Errorf("repository %v/%v not found", org, repo)
 		}
 		result = append(result, contributors...)
 
 		if resp.NextPage == 0 {
 			break
 		}
+		opts.Page = resp.NextPage
 	}
 
 	return result, nil
 }
 
-func (p *Plugin) fetchCommitsFromRepoByAuthorAndWeek(org, repo, author string, weekStart time.Time) ([]*github.RepositoryCommit, error) {
+func (p *Plugin) fetchCommitsFromRepoByAuthor(org, repo, author string) ([]*github.RepositoryCommit, error) {
 	var result []*github.RepositoryCommit
 	opts := &github.CommitsListOptions{
 		ListOptions: github.ListOptions{
 			PerPage: resultsPerPage,
 		},
-		Since:  weekStart,
-		Until:  weekStart.AddDate(0, 0, 7),
 		Author: author,
 	}
 
 	for {
 		commits, resp, err := p.client.Repositories.ListCommits(context.Background(), org, repo, opts)
-		if resp.StatusCode == http.StatusNotFound {
-			return nil, fmt.Errorf("repository %v/%v not found", org, repo)
-		}
 		if err != nil {
 			return nil, err
+		}
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, fmt.Errorf("repository %v/%v not found", org, repo)
 		}
 		result = append(result, commits...)
 
