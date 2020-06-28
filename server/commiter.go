@@ -65,11 +65,16 @@ func (p *Plugin) executeCommiterCommand(commandArgs []string, args *model.Comman
 		topic += "/" + repo
 	}
 
+	avatorLogo, err := p.GetAvatarLogo(owner, isOrg)
+	if err != nil {
+		avatorLogo = ""
+	}
+
 	attachments := []*model.SlackAttachment{{
 		Title:      "Fetching commiter stats between " + since.Format(shortFormWithDay) + " and " + until.Format(shortFormWithDay),
 		Text:       waitText,
 		AuthorName: topic,
-		AuthorIcon: p.GetAvatarLogo(owner, isOrg),
+		AuthorIcon: avatorLogo,
 		AuthorLink: fmt.Sprintf("https://github.com/%v", topic),
 	}}
 
@@ -98,10 +103,13 @@ func (p *Plugin) updateCommitersPost(post *model.Post, userID, org, repo string,
 	if repo != "" {
 		commits, err = p.fetchCommitsFromRepo(org, repo, since, fetchUntil)
 	}
-	if isOrg {
-		commits, err = p.fetchCommitsFromOrg(org, since, fetchUntil)
+	switch isOrg {
+	case false:
+		commits, err = p.fetchCommitsFromUser(org, since, fetchUntil)
+	default:
+		p.fetchCommitsFromOrg(org, since, fetchUntil)
 	}
-	commits, err = p.fetchCommitsFromUser(org, since, fetchUntil)
+
 	if err != nil {
 		p.API.LogError("failed to fetch data", "err", err.Error())
 
@@ -179,17 +187,24 @@ func (p *Plugin) verifyOrg(owner string) (bool, error) {
 	if err == nil {
 		return false, nil
 	} else {
-		return true, nil
+		return true, fmt.Errorf("Unable to find Github Organization, or User with matching owner: %s", owner)
 	}
 
 }
 
-func (p *Plugin) GetAvatarLogo(owner string, isOrg bool) string {
+// GetAvatarLogo fetchs the AvatarLogo from respective Github Organisation or User
+func (p *Plugin) GetAvatarLogo(owner string, isOrg bool) (string, error) {
 	if isOrg {
-		org, _, _ := p.client.Organizations.Get(context.Background(), owner)
-		return org.GetAvatarURL()
+		org, _, err := p.client.Organizations.Get(context.Background(), owner)
+		if err != nil {
+			return "", fmt.Errorf("Unable to find Github Organization with matching owner: %s", owner)
+		}
+		return org.GetAvatarURL(), nil
 	} else {
-		user, _, _ := p.client.Users.Get(context.Background(), owner)
-		return user.GetAvatarURL()
+		user, _, err := p.client.Users.Get(context.Background(), owner)
+		if err != nil {
+			return "", fmt.Errorf("Unable to find Github User with matching owner: %s", owner)
+		}
+		return user.GetAvatarURL(), nil
 	}
 }
