@@ -68,6 +68,7 @@ func (p *Plugin) executeCommiterCommand(commandArgs []string, args *model.Comman
 	avatorLogo, err := p.GetAvatarLogo(owner, isOrg)
 	if err != nil {
 		avatorLogo = ""
+		p.API.LogError(err.Error())
 	}
 
 	attachments := []*model.SlackAttachment{{
@@ -100,14 +101,14 @@ func (p *Plugin) updateCommitersPost(post *model.Post, userID, org, repo string,
 
 	var commits []*github.RepositoryCommit
 	var err error
-	if repo != "" {
+
+	switch {
+	case repo != "":
 		commits, err = p.fetchCommitsFromRepo(org, repo, since, fetchUntil)
-	}
-	switch isOrg {
-	case false:
+	case isOrg:
+		commits, err = p.fetchCommitsFromOrg(org, since, fetchUntil)
+	case !isOrg:
 		commits, err = p.fetchCommitsFromUser(org, since, fetchUntil)
-	default:
-		p.fetchCommitsFromOrg(org, since, fetchUntil)
 	}
 
 	if err != nil {
@@ -186,9 +187,9 @@ func (p *Plugin) verifyOrg(owner string) (bool, error) {
 	_, _, err = p.client.Users.Get(context.Background(), owner)
 	if err == nil {
 		return false, nil
-	} else {
-		return true, fmt.Errorf("Unable to find Github Organization, or User with matching owner: %s", owner)
 	}
+
+	return true, fmt.Errorf("Unable to find Github Organization, or User with matching owner: %s", owner)
 
 }
 
