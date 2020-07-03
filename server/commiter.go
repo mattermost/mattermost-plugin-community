@@ -65,9 +65,9 @@ func (p *Plugin) executeCommiterCommand(commandArgs []string, args *model.Comman
 		topic += "/" + repo
 	}
 
-	avatorLogo, err := p.GetAvatarLogo(owner, isOrg)
+	avatarLogo, err := p.GetAvatarLogo(owner, isOrg)
 	if err != nil {
-		avatorLogo = ""
+		avatarLogo = ""
 		p.API.LogError(err.Error())
 	}
 
@@ -75,7 +75,7 @@ func (p *Plugin) executeCommiterCommand(commandArgs []string, args *model.Comman
 		Title:      "Fetching commiter stats between " + since.Format(shortFormWithDay) + " and " + until.Format(shortFormWithDay),
 		Text:       waitText,
 		AuthorName: topic,
-		AuthorIcon: avatorLogo,
+		AuthorIcon: avatarLogo,
 		AuthorLink: fmt.Sprintf("https://github.com/%v", topic),
 	}}
 
@@ -189,7 +189,7 @@ func (p *Plugin) verifyOrg(owner string) (bool, error) {
 		return false, nil
 	}
 
-	return true, fmt.Errorf("Unable to find Github Organization, or User with matching owner: %s", owner)
+	return true, fmt.Errorf("Unable to find GitHub Organization, or User with matching owner: %s", owner)
 
 }
 
@@ -198,14 +198,14 @@ func (p *Plugin) GetAvatarLogo(owner string, isOrg bool) (string, error) {
 	if isOrg {
 		org, _, err := p.client.Organizations.Get(context.Background(), owner)
 		if err != nil {
-			return "", fmt.Errorf("Unable to find Github Organization with matching owner: %s", owner)
+			return "", fmt.Errorf("Unable to find GitHub Organization with matching owner: %s", owner)
 		}
 		return org.GetAvatarURL(), nil
-	} else {
-		user, _, err := p.client.Users.Get(context.Background(), owner)
-		if err != nil {
-			return "", fmt.Errorf("Unable to find Github User with matching owner: %s", owner)
-		}
-		return user.GetAvatarURL(), nil
 	}
+
+	user, _, err := p.client.Users.Get(context.Background(), owner)
+	if err != nil {
+		return "", fmt.Errorf("Unable to find GitHub User with matching owner: %s", owner)
+	}
+	return user.GetAvatarURL(), nil
 }
