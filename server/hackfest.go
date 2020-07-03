@@ -108,7 +108,7 @@ func (p *Plugin) listHackfestContributors(args *model.CommandArgs) *model.AppErr
 	org := config.HackfestOrg
 	if org == "" {
 		return &model.AppError{
-			Id:         "Hackfest organisation not configured. Please contact you system administrator",
+			Id:         "Hackfest organization not configured. Please contact you system administrator",
 			StatusCode: http.StatusBadRequest,
 			Where:      "p.ExecuteCommand",
 		}
