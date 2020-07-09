@@ -140,23 +140,6 @@ func (p *Plugin) fetchCommitsFromRepo(org, repo string, since, until time.Time) 
 	return result, nil
 }
 
-func (p *Plugin) fetchOrgMember(org string) ([]*github.User, error) {
-	teams, err := p.fetchTeams(org)
-	if err != nil {
-		return nil, err
-	}
-
-	var orgMember []*github.User
-	for _, team := range teams {
-		teamMember, err := p.fetchTeamMemberFromTeam(team.GetID())
-		if err != nil {
-			return nil, err
-		}
-		orgMember = append(orgMember, teamMember...)
-	}
-	return orgMember, nil
-}
-
 func (p *Plugin) fetchTeamMemberFromTeam(id int64) ([]*github.User, error) {
 	var result []*github.User
 	opts := &github.TeamListTeamMembersOptions{

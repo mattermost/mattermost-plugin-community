@@ -114,12 +114,7 @@ func (p *Plugin) updateCommitersPost(post *model.Post, userID, org, repo string,
 	if err != nil {
 		p.API.LogError("failed to fetch data", "err", err.Error())
 
-		var message string
-		if _, ok := err.(*github.RateLimitError); ok {
-			message = "Hit rate limit. Please try again later."
-		} else {
-			message = "Failed to fetch data:" + err.Error()
-		}
+		message := githubErrorHandle(err)
 		post.Props["attachments"].([]*model.SlackAttachment)[0].Text = message
 	} else {
 		commiter := map[string]int{}

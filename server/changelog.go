@@ -94,12 +94,7 @@ func (p *Plugin) updateChangelogPost(post *model.Post, userID, org, repo string,
 	if err != nil {
 		p.API.LogError("Failed to fetch data", "err", err.Error())
 
-		var message string
-		if _, ok := err.(*github.RateLimitError); ok {
-			message = "Hit rate limit. Please try again later."
-		} else {
-			message = "Failed to fetch data. Please try again later. Error: " + err.Error()
-		}
+		message := githubErrorHandle(err)
 		post.Props["attachments"].([]*model.SlackAttachment)[0].Text = message
 	} else {
 		var commiter []string
@@ -162,4 +157,14 @@ func (p *Plugin) updateChangelogPost(post *model.Post, userID, org, repo string,
 		p.API.LogError("Failed to update post", "err", appErr.Error())
 		return
 	}
+}
+
+func githubErrorHandle(err error) string {
+	var message string
+	if _, ok := err.(*github.RateLimitError); ok {
+		message = "Hit rate limit. Please try again later."
+	} else {
+		message = "Failed to fetch data:" + err.Error()
+	}
+	return message
 }

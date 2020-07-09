@@ -108,7 +108,7 @@ func (p *Plugin) listHackfestContributors(args *model.CommandArgs) *model.AppErr
 	org := config.HackfestOrg
 	if org == "" {
 		return &model.AppError{
-			Id:         "Hackfest organisation not configured. Please contact you system administrator",
+			Id:         "Hackfest organization not configured. Please contact you system administrator",
 			StatusCode: http.StatusBadRequest,
 			Where:      "p.ExecuteCommand",
 		}
@@ -188,12 +188,7 @@ func (p *Plugin) updateHackfestContributorsPost(post *model.Post, userID, org, r
 	if err != nil {
 		p.API.LogWarn("failed to fetch data", "err", err.Error())
 
-		var message string
-		if _, ok := err.(*github.RateLimitError); ok {
-			message = "Hit rate limit. Please try again later."
-		} else {
-			message = "Failed to fetch data:" + err.Error()
-		}
+		message := githubErrorHandle(err)
 		post.Props["attachments"].([]*model.SlackAttachment)[0].Text = message
 	} else {
 		contributors := map[string]int{}
