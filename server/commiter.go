@@ -184,23 +184,22 @@ func (p *Plugin) verifyOrg(owner string) (bool, error) {
 		return false, nil
 	}
 
-	return true, fmt.Errorf("Unable to find GitHub Organization, or User with matching owner: %s", owner)
-
+	return true, fmt.Errorf("unable to find GitHub Organization, or User with matching owner: %s", owner)
 }
 
-// GetAvatarLogo fetchs the AvatarLogo from respective Github Organisation or User
+// GetAvatarLogo fetchs the AvatarLogo from respective Github Organization or User
 func (p *Plugin) GetAvatarLogo(owner string, isOrg bool) (string, error) {
 	if isOrg {
 		org, _, err := p.client.Organizations.Get(context.Background(), owner)
 		if err != nil {
-			return "", fmt.Errorf("Unable to find GitHub Organization with matching owner: %s", owner)
+			return "", fmt.Errorf("unable to find GitHub Organization with matching owner: %s", owner)
 		}
 		return org.GetAvatarURL(), nil
 	}
 
 	user, _, err := p.client.Users.Get(context.Background(), owner)
 	if err != nil {
-		return "", fmt.Errorf("Unable to find GitHub User with matching owner: %s", owner)
+		return "", fmt.Errorf("unable to find GitHub User with matching owner: %s", owner)
 	}
 	return user.GetAvatarURL(), nil
 }
