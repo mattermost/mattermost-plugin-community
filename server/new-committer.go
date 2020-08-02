@@ -20,6 +20,8 @@ type firstContributionInfo struct {
 	repo   string
 }
 
+const rateLimitMessage = "Hit rate limit. Please try again later."
+
 func (p *Plugin) executeNewCommitterCommand(commandArgs []string, args *model.CommandArgs) *model.AppError {
 	if len(commandArgs) != 2 {
 		return &model.AppError{
@@ -29,7 +31,7 @@ func (p *Plugin) executeNewCommitterCommand(commandArgs []string, args *model.Co
 		}
 	}
 
-	organisation := commandArgs[0]
+	organization := commandArgs[0]
 
 	since, err := time.Parse(shortFormWithDay, commandArgs[1])
 	if err != nil {
@@ -40,7 +42,7 @@ func (p *Plugin) executeNewCommitterCommand(commandArgs []string, args *model.Co
 		}
 	}
 
-	org, _, err := p.client.Organizations.Get(context.Background(), organisation)
+	org, _, err := p.client.Organizations.Get(context.Background(), organization)
 	if err != nil {
 		return &model.AppError{
 			Id:         "Failed to fetch data",
@@ -52,9 +54,9 @@ func (p *Plugin) executeNewCommitterCommand(commandArgs []string, args *model.Co
 	attachments := []*model.SlackAttachment{{
 		Title:      "Fetching new commiters since " + since.Format(shortFormWithDay),
 		Text:       waitText,
-		AuthorName: organisation,
+		AuthorName: organization,
 		AuthorIcon: org.GetAvatarURL(),
-		AuthorLink: fmt.Sprintf("https://github.com/%v", organisation),
+		AuthorLink: fmt.Sprintf("https://github.com/%v", organization),
 	}}
 
 	loadingPost := &model.Post{
@@ -68,7 +70,7 @@ func (p *Plugin) executeNewCommitterCommand(commandArgs []string, args *model.Co
 		return appErr
 	}
 
-	go p.updateNewCommittersPost(loadingPost, args.UserId, organisation, since)
+	go p.updateNewCommittersPost(loadingPost, args.UserId, organization, since)
 
 	return nil
 }
@@ -127,9 +129,7 @@ func (p *Plugin) findFirstContributions(contributors map[string][]*github.Contri
 
 			if firstCommitInRepo.GetCommit().Committer.GetDate().Before(since) {
 				earlierContributors[author] = true
-				if _, contains := firstContributions[author]; contains {
-					delete(firstContributions, author)
-				}
+				delete(firstContributions, author)
 				continue
 			}
 
@@ -151,7 +151,7 @@ func (p *Plugin) logAndPropUserAboutError(post *model.Post, userID string, err e
 
 	var message = "Failed to fetch data:" + err.Error()
 	if _, ok := err.(*github.RateLimitError); ok {
-		message = "Hit rate limit. Please try again later."
+		message = rateLimitMessage
 	}
 	post.Props["attachments"].([]*model.SlackAttachment)[0].Text = message
 	p.updatePost(post, userID)

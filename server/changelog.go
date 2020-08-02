@@ -162,7 +162,7 @@ func (p *Plugin) updateChangelogPost(post *model.Post, userID, org, repo string,
 func githubErrorHandle(err error) string {
 	var message string
 	if _, ok := err.(*github.RateLimitError); ok {
-		message = "Hit rate limit. Please try again later."
+		message = rateLimitMessage
 	} else {
 		message = "Failed to fetch data:" + err.Error()
 	}
