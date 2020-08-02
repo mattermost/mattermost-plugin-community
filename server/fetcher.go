@@ -52,9 +52,10 @@ func (p *Plugin) fetchCommitsFromOrg(org string, since, until time.Time) ([]*git
 
 		for jr := range jobResults {
 			if jr.err != nil {
-				return nil, err
+				p.API.LogWarn("Failed to fetch commits ", "error", jr.err.Error())
+			} else {
+				result = append(result, jr.commits...)
 			}
-			result = append(result, jr.commits...)
 		}
 
 		if resp.NextPage == 0 {
@@ -62,6 +63,51 @@ func (p *Plugin) fetchCommitsFromOrg(org string, since, until time.Time) ([]*git
 		}
 		opts.Page = resp.NextPage
 	}
+
+	return result, nil
+}
+
+func (p *Plugin) fetchCommitsFromUser(user string, since, until time.Time) ([]*github.RepositoryCommit, error) {
+	var result []*github.RepositoryCommit
+	opts := &github.RepositoryListOptions{
+		ListOptions: github.ListOptions{
+			PerPage: resultsPerPage,
+		},
+		Type: "sources",
+	}
+
+	for {
+		repos, resp, err := p.client.Repositories.List(context.Background(), user, opts)
+		if err != nil {
+			return nil, err
+		}
+
+		var wg sync.WaitGroup
+		var jobResults = make(chan commitsResult, len(repos))
+
+		for _, repo := range repos {
+			wg.Add(1)
+			go p.fetchCommitsFromRepoJob(&wg, jobResults, user, *repo.Name, since, until)
+		}
+		go func() {
+			wg.Wait()
+			close(jobResults)
+		}()
+
+		for jr := range jobResults {
+			if jr.err != nil {
+				p.API.LogWarn("Failed to fetch commits ", "error", jr.err.Error())
+			} else {
+				result = append(result, jr.commits...)
+			}
+		}
+
+		if resp.NextPage == 0 {
+			break
+		}
+		opts.Page = resp.NextPage
+	}
+
 	return result, nil
 }
 

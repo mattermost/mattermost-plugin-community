@@ -33,7 +33,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 		appErr = p.executeNewCommitterCommand(commandArgs, args)
 	default:
 		return nil, &model.AppError{
-			Id:         fmt.Sprintf("Unkown command %v", command),
+			Id:         fmt.Sprintf("Unknown command %v", command),
 			StatusCode: http.StatusBadRequest,
 			Where:      "p.ExecuteCommand",
 		}
