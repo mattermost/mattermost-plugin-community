@@ -3,7 +3,6 @@ package main
 import (
 	"sync"
 
-	"github.com/google/go-github/v25/github"
 	"github.com/mattermost/mattermost-server/v5/model"
 	"github.com/mattermost/mattermost-server/v5/plugin"
 	"github.com/pkg/errors"
@@ -28,9 +27,6 @@ type Plugin struct {
 
 	// botUserID is the ID of the community bot user
 	botUserID string
-
-	// client used to fetch data from the GitHub API
-	client *github.Client
 }
 
 // OnActivate creates a github client with the access token from the configurations,

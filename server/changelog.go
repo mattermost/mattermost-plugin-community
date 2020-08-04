@@ -7,9 +7,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/google/go-github/v25/github"
-	"github.com/mattermost/mattermost-plugin-community/server/util"
+	"github.com/google/go-github/v31/github"
 	"github.com/mattermost/mattermost-server/v5/model"
+
+	"github.com/mattermost/mattermost-plugin-community/server/util"
 )
 
 const shortForm = "2006-01"
@@ -41,7 +42,18 @@ func (p *Plugin) executeChangelogCommand(commandArgs []string, args *model.Comma
 		}
 	}
 
-	org, _, err := p.client.Organizations.Get(context.Background(), owner)
+	client, err := p.getGitHubClient(args.UserId)
+	if err != nil {
+		p.API.LogWarn("Failed to create GitHub client", "error", err.Error())
+
+		return &model.AppError{
+			Id:         "Failed to connect to GitHub.",
+			StatusCode: http.StatusBadRequest,
+			Where:      "p.ExecuteCommand",
+		}
+	}
+
+	org, _, err := client.Organizations.Get(context.Background(), owner)
 	if err != nil {
 		p.API.LogWarn("Failed to fetch organization", "error", err.Error())
 		return &model.AppError{
@@ -75,21 +87,21 @@ func (p *Plugin) executeChangelogCommand(commandArgs []string, args *model.Comma
 		return appErr
 	}
 
-	go p.updateChangelogPost(loadingPost, args.UserId, owner, repo, month)
+	go p.updateChangelogPost(client, loadingPost, args.UserId, owner, repo, month)
 
 	return nil
 }
 
-func (p *Plugin) updateChangelogPost(post *model.Post, userID, org, repo string, month time.Time) {
+func (p *Plugin) updateChangelogPost(client *github.Client, post *model.Post, userID, org, repo string, month time.Time) {
 	// Fetch commits until the end of this month
 	nextMonth := month.AddDate(0, 1, 0).Add(-time.Microsecond)
 
 	var commits []*github.RepositoryCommit
 	var err error
 	if repo != "" {
-		commits, err = p.fetchCommitsFromRepo(org, repo, month, nextMonth)
+		commits, err = p.fetchCommitsFromRepo(client, org, repo, month, nextMonth)
 	} else {
-		commits, err = p.fetchCommitsFromOrg(org, month, nextMonth)
+		commits, err = p.fetchCommitsFromOrg(client, org, month, nextMonth)
 	}
 	if err != nil {
 		p.API.LogError("Failed to fetch data", "err", err.Error())
