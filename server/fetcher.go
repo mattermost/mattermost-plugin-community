@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/go-github/v25/github"
+	"github.com/google/go-github/v31/github"
 )
 
 type commitsResult struct {
@@ -23,7 +23,7 @@ type contributorsResult struct {
 
 const resultsPerPage = 100
 
-func (p *Plugin) fetchCommitsFromOrg(org string, since, until time.Time) ([]*github.RepositoryCommit, error) {
+func (p *Plugin) fetchCommitsFromOrg(client *github.Client, org string, since, until time.Time) ([]*github.RepositoryCommit, error) {
 	var result []*github.RepositoryCommit
 	opts := &github.RepositoryListByOrgOptions{
 		ListOptions: github.ListOptions{
@@ -33,7 +33,7 @@ func (p *Plugin) fetchCommitsFromOrg(org string, since, until time.Time) ([]*git
 	}
 
 	for {
-		repos, resp, err := p.client.Repositories.ListByOrg(context.Background(), org, opts)
+		repos, resp, err := client.Repositories.ListByOrg(context.Background(), org, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -43,7 +43,7 @@ func (p *Plugin) fetchCommitsFromOrg(org string, since, until time.Time) ([]*git
 
 		for _, repo := range repos {
 			wg.Add(1)
-			go p.fetchCommitsFromRepoJob(&wg, jobResults, org, *repo.Name, since, until)
+			go p.fetchCommitsFromRepoJob(&wg, jobResults, client, org, *repo.Name, since, until)
 		}
 		go func() {
 			wg.Wait()
@@ -67,7 +67,7 @@ func (p *Plugin) fetchCommitsFromOrg(org string, since, until time.Time) ([]*git
 	return result, nil
 }
 
-func (p *Plugin) fetchCommitsFromUser(user string, since, until time.Time) ([]*github.RepositoryCommit, error) {
+func (p *Plugin) fetchCommitsFromUser(client *github.Client, user string, since, until time.Time) ([]*github.RepositoryCommit, error) {
 	var result []*github.RepositoryCommit
 	opts := &github.RepositoryListOptions{
 		ListOptions: github.ListOptions{
@@ -77,7 +77,7 @@ func (p *Plugin) fetchCommitsFromUser(user string, since, until time.Time) ([]*g
 	}
 
 	for {
-		repos, resp, err := p.client.Repositories.List(context.Background(), user, opts)
+		repos, resp, err := client.Repositories.List(context.Background(), user, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -87,7 +87,7 @@ func (p *Plugin) fetchCommitsFromUser(user string, since, until time.Time) ([]*g
 
 		for _, repo := range repos {
 			wg.Add(1)
-			go p.fetchCommitsFromRepoJob(&wg, jobResults, user, *repo.Name, since, until)
+			go p.fetchCommitsFromRepoJob(&wg, jobResults, client, user, *repo.Name, since, until)
 		}
 		go func() {
 			wg.Wait()
@@ -111,14 +111,14 @@ func (p *Plugin) fetchCommitsFromUser(user string, since, until time.Time) ([]*g
 	return result, nil
 }
 
-func (p *Plugin) fetchCommitsFromRepoJob(wg *sync.WaitGroup, result chan<- commitsResult, org, repo string, since, until time.Time) {
-	commits, err := p.fetchCommitsFromRepo(org, repo, since, until)
+func (p *Plugin) fetchCommitsFromRepoJob(wg *sync.WaitGroup, result chan<- commitsResult, client *github.Client, org, repo string, since, until time.Time) {
+	commits, err := p.fetchCommitsFromRepo(client, org, repo, since, until)
 	output := commitsResult{commits, err}
 	result <- output
 	wg.Done()
 }
 
-func (p *Plugin) fetchCommitsFromRepo(org, repo string, since, until time.Time) ([]*github.RepositoryCommit, error) {
+func (p *Plugin) fetchCommitsFromRepo(client *github.Client, org, repo string, since, until time.Time) ([]*github.RepositoryCommit, error) {
 	var result []*github.RepositoryCommit
 	opts := &github.CommitsListOptions{
 		ListOptions: github.ListOptions{
@@ -129,7 +129,7 @@ func (p *Plugin) fetchCommitsFromRepo(org, repo string, since, until time.Time) 
 	}
 
 	for {
-		commits, resp, err := p.client.Repositories.ListCommits(context.Background(), org, repo, opts)
+		commits, resp, err := client.Repositories.ListCommits(context.Background(), org, repo, opts)
 		if resp.StatusCode == http.StatusNotFound {
 			return nil, fmt.Errorf("repository %v/%v not found", org, repo)
 		}
@@ -146,7 +146,7 @@ func (p *Plugin) fetchCommitsFromRepo(org, repo string, since, until time.Time) 
 	return result, nil
 }
 
-func (p *Plugin) fetchContributors(org string) (map[string][]*github.Contributor, error) {
+func (p *Plugin) fetchContributors(client *github.Client, org string) (map[string][]*github.Contributor, error) {
 	var result = map[string][]*github.Contributor{}
 	opts := &github.RepositoryListByOrgOptions{
 		ListOptions: github.ListOptions{
@@ -156,7 +156,7 @@ func (p *Plugin) fetchContributors(org string) (map[string][]*github.Contributor
 	}
 
 	for {
-		repos, resp, err := p.client.Repositories.ListByOrg(context.Background(), org, opts)
+		repos, resp, err := client.Repositories.ListByOrg(context.Background(), org, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -166,7 +166,7 @@ func (p *Plugin) fetchContributors(org string) (map[string][]*github.Contributor
 
 		for _, repo := range repos {
 			wg.Add(1)
-			go p.fetchContributorsFromRepoJob(&wg, jobResults, org, *repo.Name)
+			go p.fetchContributorsFromRepoJob(&wg, jobResults, client, org, *repo.Name)
 		}
 		go func() {
 			wg.Wait()
@@ -187,14 +187,14 @@ func (p *Plugin) fetchContributors(org string) (map[string][]*github.Contributor
 	return result, nil
 }
 
-func (p *Plugin) fetchContributorsFromRepoJob(wg *sync.WaitGroup, result chan<- contributorsResult, org, repo string) {
-	contributors, err := p.fetchContributorsFromRepo(org, repo)
+func (p *Plugin) fetchContributorsFromRepoJob(wg *sync.WaitGroup, result chan<- contributorsResult, client *github.Client, org, repo string) {
+	contributors, err := p.fetchContributorsFromRepo(client, org, repo)
 	output := contributorsResult{contributors, repo, err}
 	result <- output
 	wg.Done()
 }
 
-func (p *Plugin) fetchContributorsFromRepo(org, repo string) ([]*github.Contributor, error) {
+func (p *Plugin) fetchContributorsFromRepo(client *github.Client, org, repo string) ([]*github.Contributor, error) {
 	var result []*github.Contributor
 
 	opts := &github.ListContributorsOptions{
@@ -204,7 +204,7 @@ func (p *Plugin) fetchContributorsFromRepo(org, repo string) ([]*github.Contribu
 	}
 
 	for {
-		contributors, resp, err := p.client.Repositories.ListContributors(context.Background(), org, repo, opts)
+		contributors, resp, err := client.Repositories.ListContributors(context.Background(), org, repo, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -222,7 +222,7 @@ func (p *Plugin) fetchContributorsFromRepo(org, repo string) ([]*github.Contribu
 	return result, nil
 }
 
-func (p *Plugin) fetchCommitsFromRepoByAuthor(org, repo, author string) ([]*github.RepositoryCommit, error) {
+func (p *Plugin) fetchCommitsFromRepoByAuthor(client *github.Client, org, repo, author string) ([]*github.RepositoryCommit, error) {
 	var result []*github.RepositoryCommit
 	opts := &github.CommitsListOptions{
 		ListOptions: github.ListOptions{
@@ -232,7 +232,7 @@ func (p *Plugin) fetchCommitsFromRepoByAuthor(org, repo, author string) ([]*gith
 	}
 
 	for {
-		commits, resp, err := p.client.Repositories.ListCommits(context.Background(), org, repo, opts)
+		commits, resp, err := client.Repositories.ListCommits(context.Background(), org, repo, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -249,7 +249,7 @@ func (p *Plugin) fetchCommitsFromRepoByAuthor(org, repo, author string) ([]*gith
 	return result, nil
 }
 
-func (p *Plugin) fetchTeamMemberFromTeam(id int64) ([]*github.User, error) {
+func (p *Plugin) fetchTeamMemberFromTeam(client *github.Client, orgID, teamID int64) ([]*github.User, error) {
 	var result []*github.User
 	opts := &github.TeamListTeamMembersOptions{
 		ListOptions: github.ListOptions{
@@ -257,7 +257,7 @@ func (p *Plugin) fetchTeamMemberFromTeam(id int64) ([]*github.User, error) {
 		},
 	}
 	for {
-		member, resp, err := p.client.Teams.ListTeamMembers(context.Background(), id, opts)
+		member, resp, err := client.Teams.ListTeamMembersByID(context.Background(), orgID, teamID, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -271,13 +271,13 @@ func (p *Plugin) fetchTeamMemberFromTeam(id int64) ([]*github.User, error) {
 	return result, nil
 }
 
-func (p *Plugin) fetchTeams(org string) ([]*github.Team, error) {
+func (p *Plugin) fetchTeams(client *github.Client, org string) ([]*github.Team, error) {
 	var result []*github.Team
 	opts := &github.ListOptions{
 		PerPage: resultsPerPage,
 	}
 	for {
-		teams, resp, err := p.client.Teams.ListTeams(context.Background(), org, opts)
+		teams, resp, err := client.Teams.ListTeams(context.Background(), org, opts)
 		if err != nil {
 			return nil, err
 		}

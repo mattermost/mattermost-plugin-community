@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/google/go-github/v25/github"
+	"github.com/google/go-github/v31/github"
 	"github.com/mattermost/mattermost-server/v5/model"
 )
 
@@ -42,7 +42,18 @@ func (p *Plugin) executeNewCommitterCommand(commandArgs []string, args *model.Co
 		}
 	}
 
-	org, _, err := p.client.Organizations.Get(context.Background(), organization)
+	client, err := p.getGitHubClient(args.UserId)
+	if err != nil {
+		p.API.LogWarn("Failed to create GitHub client", "error", err.Error())
+
+		return &model.AppError{
+			Id:         "Failed to connect to GitHub.",
+			StatusCode: http.StatusBadRequest,
+			Where:      "p.ExecuteCommand",
+		}
+	}
+
+	org, _, err := client.Organizations.Get(context.Background(), organization)
 	if err != nil {
 		return &model.AppError{
 			Id:         "Failed to fetch data",
@@ -70,19 +81,19 @@ func (p *Plugin) executeNewCommitterCommand(commandArgs []string, args *model.Co
 		return appErr
 	}
 
-	go p.updateNewCommittersPost(loadingPost, args.UserId, organization, since)
+	go p.updateNewCommittersPost(client, loadingPost, args.UserId, organization, since)
 
 	return nil
 }
 
-func (p *Plugin) updateNewCommittersPost(post *model.Post, userID, org string, since time.Time) {
-	contributors, err := p.fetchContributors(org)
+func (p *Plugin) updateNewCommittersPost(client *github.Client, post *model.Post, userID, org string, since time.Time) {
+	contributors, err := p.fetchContributors(client, org)
 	if err != nil {
 		p.logAndPropUserAboutError(post, userID, err)
 		return
 	}
 
-	firstContributions, err := p.findFirstContributions(contributors, org, since)
+	firstContributions, err := p.findFirstContributions(client, contributors, org, since)
 	if err != nil {
 		p.logAndPropUserAboutError(post, userID, err)
 		return
@@ -101,7 +112,7 @@ func (p *Plugin) updateNewCommittersPost(post *model.Post, userID, org string, s
 	p.createContributorsPost(post.ChannelId, userID, result)
 }
 
-func (p *Plugin) findFirstContributions(contributors map[string][]*github.Contributor, org string, since time.Time) (map[string]firstContributionInfo, error) {
+func (p *Plugin) findFirstContributions(client *github.Client, contributors map[string][]*github.Contributor, org string, since time.Time) (map[string]firstContributionInfo, error) {
 	firstContributions := map[string]firstContributionInfo{}
 	earlierContributors := map[string]bool{}
 
@@ -114,7 +125,7 @@ func (p *Plugin) findFirstContributions(contributors map[string][]*github.Contri
 				continue
 			}
 
-			commits, err := p.fetchCommitsFromRepoByAuthor(org, repo, author)
+			commits, err := p.fetchCommitsFromRepoByAuthor(client, org, repo, author)
 			if err != nil {
 				return nil, err
 			}

@@ -1,13 +1,9 @@
 package main
 
 import (
-	"context"
-	"net/http"
 	"reflect"
 
-	"github.com/google/go-github/v25/github"
 	"github.com/pkg/errors"
-	"golang.org/x/oauth2"
 )
 
 // configuration captures the plugin's external configuration as exposed in the Mattermost server
@@ -87,15 +83,6 @@ func (p *Plugin) OnConfigurationChange() error {
 	if err := p.API.LoadPluginConfiguration(configuration); err != nil {
 		return errors.Wrap(err, "failed to load plugin configuration")
 	}
-
-	var tc *http.Client
-	if configuration.Token != "" {
-		ts := oauth2.StaticTokenSource(
-			&oauth2.Token{AccessToken: configuration.Token},
-		)
-		tc = oauth2.NewClient(context.Background(), ts)
-	}
-	p.client = github.NewClient(tc)
 
 	p.setConfiguration(configuration)
 

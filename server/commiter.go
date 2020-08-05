@@ -8,9 +8,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/google/go-github/v25/github"
-	"github.com/mattermost/mattermost-plugin-community/server/util"
+	"github.com/google/go-github/v31/github"
 	"github.com/mattermost/mattermost-server/v5/model"
+
+	"github.com/mattermost/mattermost-plugin-community/server/util"
 )
 
 const shortFormWithDay = "2006-01-02"
@@ -51,7 +52,18 @@ func (p *Plugin) executeCommiterCommand(commandArgs []string, args *model.Comman
 		}
 	}
 
-	isOrg, err := p.verifyOrg(owner)
+	client, err := p.getGitHubClient(args.UserId)
+	if err != nil {
+		p.API.LogWarn("Failed to create GitHub client", "error", err.Error())
+
+		return &model.AppError{
+			Id:         "Failed to connect to GitHub.",
+			StatusCode: http.StatusBadRequest,
+			Where:      "p.ExecuteCommand",
+		}
+	}
+
+	isOrg, err := p.verifyOrg(client, owner)
 	if err != nil {
 		return &model.AppError{
 			Id:         "Failed to fetch data",
@@ -65,7 +77,7 @@ func (p *Plugin) executeCommiterCommand(commandArgs []string, args *model.Comman
 		topic += "/" + repo
 	}
 
-	avatarLogo, err := p.GetAvatarLogo(owner, isOrg)
+	avatarLogo, err := p.GetAvatarLogo(client, owner, isOrg)
 	if err != nil {
 		avatarLogo = ""
 		p.API.LogError(err.Error())
@@ -90,12 +102,12 @@ func (p *Plugin) executeCommiterCommand(commandArgs []string, args *model.Comman
 		return appErr
 	}
 
-	go p.updateCommitersPost(loadingPost, args.UserId, owner, repo, isOrg, since, until)
+	go p.updateCommitersPost(client, loadingPost, args.UserId, owner, repo, isOrg, since, until)
 
 	return nil
 }
 
-func (p *Plugin) updateCommitersPost(post *model.Post, userID, org, repo string, isOrg bool, since, until time.Time) {
+func (p *Plugin) updateCommitersPost(client *github.Client, post *model.Post, userID, org, repo string, isOrg bool, since, until time.Time) {
 	// Fetch commits until one day after at midnight
 	fetchUntil := until.AddDate(0, 0, 1).Add(-time.Microsecond)
 
@@ -104,11 +116,11 @@ func (p *Plugin) updateCommitersPost(post *model.Post, userID, org, repo string,
 
 	switch {
 	case repo != "":
-		commits, err = p.fetchCommitsFromRepo(org, repo, since, fetchUntil)
+		commits, err = p.fetchCommitsFromRepo(client, org, repo, since, fetchUntil)
 	case isOrg:
-		commits, err = p.fetchCommitsFromOrg(org, since, fetchUntil)
+		commits, err = p.fetchCommitsFromOrg(client, org, since, fetchUntil)
 	case !isOrg:
-		commits, err = p.fetchCommitsFromUser(org, since, fetchUntil)
+		commits, err = p.fetchCommitsFromUser(client, org, since, fetchUntil)
 	}
 
 	if err != nil {
@@ -174,12 +186,12 @@ func (p *Plugin) updateCommitersPost(post *model.Post, userID, org, repo string,
 	}
 }
 
-func (p *Plugin) verifyOrg(owner string) (bool, error) {
-	_, _, err := p.client.Organizations.Get(context.Background(), owner)
+func (p *Plugin) verifyOrg(client *github.Client, owner string) (bool, error) {
+	_, _, err := client.Organizations.Get(context.Background(), owner)
 	if err == nil {
 		return true, nil
 	}
-	_, _, err = p.client.Users.Get(context.Background(), owner)
+	_, _, err = client.Users.Get(context.Background(), owner)
 	if err == nil {
 		return false, nil
 	}
@@ -187,17 +199,17 @@ func (p *Plugin) verifyOrg(owner string) (bool, error) {
 	return true, fmt.Errorf("unable to find GitHub Organization, or User with matching owner: %s", owner)
 }
 
-// GetAvatarLogo fetchs the AvatarLogo from respective Github Organization or User
-func (p *Plugin) GetAvatarLogo(owner string, isOrg bool) (string, error) {
+// GetAvatarLogo fetches the AvatarLogo from respective Github Organization or User
+func (p *Plugin) GetAvatarLogo(client *github.Client, owner string, isOrg bool) (string, error) {
 	if isOrg {
-		org, _, err := p.client.Organizations.Get(context.Background(), owner)
+		org, _, err := client.Organizations.Get(context.Background(), owner)
 		if err != nil {
 			return "", fmt.Errorf("unable to find GitHub Organization with matching owner: %s", owner)
 		}
 		return org.GetAvatarURL(), nil
 	}
 
-	user, _, err := p.client.Users.Get(context.Background(), owner)
+	user, _, err := client.Users.Get(context.Background(), owner)
 	if err != nil {
 		return "", fmt.Errorf("unable to find GitHub User with matching owner: %s", owner)
 	}
