@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v25/github"
+	"github.com/google/go-github/v31/github"
 	"github.com/mattermost/mattermost-server/v5/model"
 )
 
@@ -120,6 +120,17 @@ func (p *Plugin) listHackfestContributors(args *model.CommandArgs) *model.AppErr
 		topic += "/" + repo
 	}
 
+	client, err := p.getGitHubClient(args.UserId)
+	if err != nil {
+		p.API.LogWarn("Failed to create GitHub client", "error", err.Error())
+
+		return &model.AppError{
+			Id:         "Failed to connect to GitHub.",
+			StatusCode: http.StatusBadRequest,
+			Where:      "p.ExecuteCommand",
+		}
+	}
+
 	attachments := []*model.SlackAttachment{{
 		Title:      "Fetching Hackfest contributors",
 		Text:       waitText,
@@ -138,11 +149,11 @@ func (p *Plugin) listHackfestContributors(args *model.CommandArgs) *model.AppErr
 		return appErr
 	}
 
-	go p.updateHackfestContributorsPost(loadingPost, args.UserId, org, repo, start, end)
+	go p.updateHackfestContributorsPost(client, loadingPost, args.UserId, org, repo, start, end)
 	return nil
 }
 
-func (p *Plugin) updateHackfestContributorsPost(post *model.Post, userID, org, repo string, since, until time.Time) {
+func (p *Plugin) updateHackfestContributorsPost(client *github.Client, post *model.Post, userID, org, repo string, since, until time.Time) {
 	config := p.getConfiguration()
 
 	// Fetch commits until one day after at midnight
@@ -151,9 +162,9 @@ func (p *Plugin) updateHackfestContributorsPost(post *model.Post, userID, org, r
 	var commits []*github.RepositoryCommit
 	var err error
 	if repo != "" {
-		commits, err = p.fetchCommitsFromRepo(org, repo, since, fetchUntil)
+		commits, err = p.fetchCommitsFromRepo(client, org, repo, since, fetchUntil)
 	} else {
-		commits, err = p.fetchCommitsFromOrg(org, since, fetchUntil)
+		commits, err = p.fetchCommitsFromOrg(client, org, since, fetchUntil)
 	}
 
 	excludedUsers := strings.Split(config.HackfestExcludeUsers, ", ")
@@ -161,7 +172,7 @@ func (p *Plugin) updateHackfestContributorsPost(post *model.Post, userID, org, r
 	excludedTeams := strings.Split(config.HackfestExcludeTeams, ", ")
 	if len(excludedTeams) > 0 {
 		var teams []*github.Team
-		teams, err = p.fetchTeams(org)
+		teams, err = p.fetchTeams(client, org)
 		if err != nil {
 			p.API.LogWarn("failed to fetch teams", "error", err.Error())
 			return
@@ -171,7 +182,7 @@ func (p *Plugin) updateHackfestContributorsPost(post *model.Post, userID, org, r
 			for _, team := range teams {
 				if team.GetSlug() == excludedTeam {
 					var member []*github.User
-					member, err = p.fetchTeamMemberFromTeam(team.GetID())
+					member, err = p.fetchTeamMemberFromTeam(client, team.GetOrganization().GetID(), team.GetID())
 					if err != nil {
 						p.API.LogWarn("failed to fetch team member", "error", err.Error())
 						return
