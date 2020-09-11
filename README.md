@@ -8,7 +8,7 @@ This plugin allows users to fetch contributor data from GitHub via a slash comma
 3. Create a personal access token for your GitHub account [here](https://github.com/settings/tokens). This is required because GitHub has a low rate limit for unauthenticated API requests. You do not need to specify a scope for your token.
 
 ## Usage
-Use `/contributors [organisation] [repo] [since] [until]` to fetch data and summarize it in a post, e.g. `/contributors mattermost mattermost-server 2019-01-01 2019-01-31`. To fetch the data from all repositories in an organisation, replace the repository name with `all`, e.g. `/contributors mattermost all 2019-01-01 2019-01-31`.
+Use `/community committer [organization]/[repo] [since] [until]` to fetch data and summarize it in a post, e.g. `/community committer mattermost/mattermost-server 2019-01-01 2019-01-31`. To fetch the data from all repositories in an organization omit the repo name, e.g. `/community committer mattermost 2019-01-01 2019-01-31`.
 
 ## Screenshots
 ![Fetching data](images/fetching.png)
