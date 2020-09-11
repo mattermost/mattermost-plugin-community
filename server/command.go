@@ -23,8 +23,8 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 
 	var appErr *model.AppError
 	switch command {
-	case "commiter":
-		appErr = p.executeCommiterCommand(commandArgs, args)
+	case "committer":
+		appErr = p.executeCommitterCommand(commandArgs, args)
 	case "changelog":
 		appErr = p.executeChangelogCommand(commandArgs, args)
 	case "hackfest":
@@ -53,7 +53,7 @@ func getCommand() *model.Command {
 		DisplayName:      "Community",
 		Description:      "Do community stuff",
 		AutoComplete:     true,
-		AutoCompleteDesc: "Available commands: commiter, changelog, hackfest, new-committer",
+		AutoCompleteDesc: "Available commands: committer, changelog, hackfest, new-committer",
 		AutoCompleteHint: "[command]",
 	}
 }

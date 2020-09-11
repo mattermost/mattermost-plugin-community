@@ -63,7 +63,7 @@ func (p *Plugin) executeNewCommitterCommand(commandArgs []string, args *model.Co
 	}
 
 	attachments := []*model.SlackAttachment{{
-		Title:      "Fetching new commiters since " + since.Format(shortFormWithDay),
+		Title:      "Fetching new committers since " + since.Format(shortFormWithDay),
 		Text:       waitText,
 		AuthorName: organization,
 		AuthorIcon: org.GetAvatarURL(),
