@@ -16,7 +16,7 @@ import (
 
 const shortFormWithDay = "2006-01-02"
 
-func (p *Plugin) executeCommiterCommand(commandArgs []string, args *model.CommandArgs) *model.AppError {
+func (p *Plugin) executeCommitterCommand(commandArgs []string, args *model.CommandArgs) *model.AppError {
 	if len(commandArgs) != 3 {
 		return &model.AppError{
 			Id:         "Need three arguments",
@@ -84,7 +84,7 @@ func (p *Plugin) executeCommiterCommand(commandArgs []string, args *model.Comman
 	}
 
 	attachments := []*model.SlackAttachment{{
-		Title:      "Fetching commiter stats between " + since.Format(shortFormWithDay) + " and " + until.Format(shortFormWithDay),
+		Title:      "Fetching committer stats between " + since.Format(shortFormWithDay) + " and " + until.Format(shortFormWithDay),
 		Text:       waitText,
 		AuthorName: topic,
 		AuthorIcon: avatarLogo,
@@ -102,12 +102,12 @@ func (p *Plugin) executeCommiterCommand(commandArgs []string, args *model.Comman
 		return appErr
 	}
 
-	go p.updateCommitersPost(client, loadingPost, args.UserId, owner, repo, isOrg, since, until)
+	go p.updateCommittersPost(client, loadingPost, args.UserId, owner, repo, isOrg, since, until)
 
 	return nil
 }
 
-func (p *Plugin) updateCommitersPost(client *github.Client, post *model.Post, userID, org, repo string, isOrg bool, since, until time.Time) {
+func (p *Plugin) updateCommittersPost(client *github.Client, post *model.Post, userID, org, repo string, isOrg bool, since, until time.Time) {
 	// Fetch commits until one day after at midnight
 	fetchUntil := until.AddDate(0, 0, 1).Add(-time.Microsecond)
 
@@ -129,14 +129,14 @@ func (p *Plugin) updateCommitersPost(client *github.Client, post *model.Post, us
 		message := githubErrorHandle(err)
 		post.Props["attachments"].([]*model.SlackAttachment)[0].Text = message
 	} else {
-		commiter := map[string]int{}
+		committer := map[string]int{}
 		for _, c := range commits {
 			author := c.GetAuthor()
 			if author == nil {
 				continue
 			}
 			u := author.GetLogin()
-			commiter[u]++
+			committer[u]++
 		}
 
 		type kv struct {
@@ -145,7 +145,7 @@ func (p *Plugin) updateCommitersPost(client *github.Client, post *model.Post, us
 		}
 
 		var ss []kv
-		for k, v := range commiter {
+		for k, v := range committer {
 			ss = append(ss, kv{k, v})
 		}
 
@@ -153,7 +153,7 @@ func (p *Plugin) updateCommitersPost(client *github.Client, post *model.Post, us
 			return ss[i].Value > ss[j].Value
 		})
 
-		var commiterText string
+		var committerText string
 		for _, e := range ss {
 			var c string
 			if e.Value > 1 {
@@ -161,21 +161,21 @@ func (p *Plugin) updateCommitersPost(client *github.Client, post *model.Post, us
 			} else {
 				c = "commit"
 			}
-			commiterText += fmt.Sprintf("- [%[1]s](https://github.com/%[1]v): %v %v\n", e.Key, e.Value, c)
+			committerText += fmt.Sprintf("- [%[1]s](https://github.com/%[1]v): %v %v\n", e.Key, e.Value, c)
 		}
 
 		attachment := post.Props["attachments"].([]*model.SlackAttachment)[0]
-		attachment.Title = "Commiter stats between " + since.Format(shortFormWithDay) + " and " + until.Format(shortFormWithDay)
+		attachment.Title = "Committer stats between " + since.Format(shortFormWithDay) + " and " + until.Format(shortFormWithDay)
 		attachment.Text = ""
 		attachment.Fields = []*model.SlackAttachmentField{{
 			Title: "Number of commits",
 			Value: strconv.Itoa(len(commits)),
 		}, {
-			Title: "Number of Commiter",
-			Value: strconv.Itoa(len(commiter)),
+			Title: "Number of Committer",
+			Value: strconv.Itoa(len(committer)),
 		}, {
-			Title: "Commiter",
-			Value: commiterText,
+			Title: "Committer",
+			Value: committerText,
 		}}
 	}
 

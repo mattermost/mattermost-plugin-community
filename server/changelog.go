@@ -109,46 +109,46 @@ func (p *Plugin) updateChangelogPost(client *github.Client, post *model.Post, us
 		message := githubErrorHandle(err)
 		post.Props["attachments"].([]*model.SlackAttachment)[0].Text = message
 	} else {
-		var commiter []string
+		var committer []string
 		for _, c := range commits {
 			author := c.GetAuthor()
 			if author == nil {
 				continue
 			}
 			u := author.GetLogin()
-			if !util.Contains(commiter, u) {
-				commiter = append(commiter, u)
+			if !util.Contains(committer, u) {
+				committer = append(committer, u)
 			}
 		}
-		util.SortSlice(commiter)
+		util.SortSlice(committer)
 
 		const userPerPost = 150
-		commiterTexts := make([]string, len(commiter)/userPerPost+1)
-		for i, c := range commiter {
+		committerTexts := make([]string, len(committer)/userPerPost+1)
+		for i, c := range committer {
 			profile := fmt.Sprintf("[%[1]s](https://github.com/%[1]v)", c)
-			if i+1 != len(commiter) {
+			if i+1 != len(committer) {
 				profile += ", "
 			}
-			commiterTexts[i/150] += profile
+			committerTexts[i/150] += profile
 		}
 
 		attachment := post.Props["attachments"].([]*model.SlackAttachment)[0]
-		attachment.Title = fmt.Sprintf("Commiter list for %v changelog", month.Month().String())
+		attachment.Title = fmt.Sprintf("Committer list for %v changelog", month.Month().String())
 		attachment.Text = ""
 		attachment.Fields = []*model.SlackAttachmentField{{
-			Title: "Number of Commiter",
-			Value: strconv.Itoa(len(commiter)),
+			Title: "Number of Committer",
+			Value: strconv.Itoa(len(committer)),
 		}, {
-			Title: "Commiter",
-			Value: "```\n" + commiterTexts[0] + "\n```",
+			Title: "Committer",
+			Value: "```\n" + committerTexts[0] + "\n```",
 		}}
 
-		for i := 1; i < len(commiterTexts); i++ {
+		for i := 1; i < len(committerTexts); i++ {
 			attachment := *attachment
 			attachment.Title += fmt.Sprintf(" (Part %v)", i+1)
 			attachment.Fields = []*model.SlackAttachmentField{{
-				Title: "Commiter",
-				Value: "```\n" + commiterTexts[i] + "\n```",
+				Title: "Committer",
+				Value: "```\n" + committerTexts[i] + "\n```",
 			}}
 
 			additionalPost := &model.Post{
