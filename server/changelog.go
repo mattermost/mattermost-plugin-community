@@ -69,7 +69,7 @@ func (p *Plugin) executeChangelogCommand(commandArgs []string, args *model.Comma
 	}
 
 	attachments := []*model.SlackAttachment{{
-		Title:      fmt.Sprintf("Fetching changelog for %v", month.Month().String()),
+		Title:      fmt.Sprintf("Fetching changelog for %v %v", month.Month().String(), month.Year()),
 		Text:       waitText,
 		AuthorName: topic,
 		AuthorIcon: org.GetAvatarURL(),
@@ -133,7 +133,7 @@ func (p *Plugin) updateChangelogPost(client *github.Client, post *model.Post, us
 		}
 
 		attachment := post.Props["attachments"].([]*model.SlackAttachment)[0]
-		attachment.Title = fmt.Sprintf("Committer list for %v changelog", month.Month().String())
+		attachment.Title = fmt.Sprintf("Committer list for %v %v changelog", month.Month().String(), month.Year())
 		attachment.Text = ""
 		attachment.Fields = []*model.SlackAttachmentField{{
 			Title: "Number of Committer",
