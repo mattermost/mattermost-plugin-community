@@ -9,7 +9,7 @@ This plugin allows users to fetch contributor data from GitHub via a slash comma
 4. Create a personal access token for your GitHub account [here](https://github.com/settings/tokens). This is required because GitHub has a low rate limit for unauthenticated API requests. You do not need to specify a scope for your token.
 
 ## Usage
-Use `/community changelog mattermost [year-month]` to fetch data and summarize it in a post, e.g. `Run /community changelog mattermost 2024-01`.
+Use `/community changelog mattermost [year-month]` to fetch data and summarize it in a post, e.g. `/community changelog mattermost 2024-01`.
 
 ## Screenshots
 ![Fetching data](images/fetching.png)
