@@ -3,7 +3,7 @@
 This plugin allows users to fetch contributor data from GitHub via a slash command.
 
 ## Installation
-1. Go to the [releases page of this GitHub repository](https://github.com/mattermost/mattermost-plugin-community/releases/latest) and download the ``master`` version for your Mattermost server.
+1. Download the ``master`` version of the Community plugin for your Mattermost server.
 2. Upload this file in the Mattermost **System Console > Plugins > Management** page to install the plugin. To learn more about how to upload a plugin, [see the documentation](https://docs.mattermost.com/administration/plugins.html#plugin-uploads).
 3. Install the GitHub plugin and connect your GitHub account. The v2.0 of the Github plugin (or newer) works.
 4. Create a personal access token for your GitHub account [here](https://github.com/settings/tokens). This is required because GitHub has a low rate limit for unauthenticated API requests. You do not need to specify a scope for your token.
