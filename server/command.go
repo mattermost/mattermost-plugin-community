@@ -16,7 +16,7 @@ const (
 )
 
 // ExecuteCommand fetches contribution stats for a given repository or organistation and posts them in a message
-func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
+func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
 	commandArgs := strings.Split(strings.TrimSpace(strings.TrimPrefix(args.Command, "/"+trigger)), " ")
 	command := commandArgs[0]
 	commandArgs = commandArgs[1:]
