@@ -29,6 +29,8 @@ type Plugin struct {
 	botUserID string
 }
 
+var _ = manifest // Fix unused linter error
+
 // OnActivate creates a github client with the access token from the configurations,
 // creates a bot account, if it doesn't exist and registers the /community slash command
 func (p *Plugin) OnActivate() error {
